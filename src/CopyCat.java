@@ -53,9 +53,9 @@ public class CopyCat {
 	}
 
 	/*
-		GUI for the progress bar
-		and the copy function
-	*/
+	 * GUI for the progress bar
+	 * and the copy function
+	 */
 	private static void copyFiles(List<File> files, File to) {
 		JFrame mainFrame = new JFrame("0%");
 		JPanel jPanel = new JPanel();
