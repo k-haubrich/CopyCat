@@ -6,6 +6,9 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -24,8 +27,9 @@ public class CopyCat {
 			System.out.println(toDir.getName());
 			scanFiles(fromDir);
 			copyFiles(toCopy, toDir);
-			System.out.println(toCopy.size() + " Files Copyed");
+			System.out.println(toCopy.size() + " Files Copied");
 		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		System.exit(0);
 	}
@@ -67,18 +71,36 @@ public class CopyCat {
 		mainFrame.setLocation(Toolkit.getDefaultToolkit().getScreenSize().width / 2,
 				Toolkit.getDefaultToolkit().getScreenSize().height / 2);
 		mainFrame.setVisible(true);
-		for (int i = 0; i < toCopy.size(); i++) {
-			String s = to.getPath() + "\\" + toCopy.get(i).getParentFile().getName() + "." + toCopy.get(i).getName();
-			int pro = (int) ((double) i / toCopy.size() * 100);
-			mainFrame.setTitle(String.valueOf(pro + "%"));
-			bar.setValue(pro);
-			try {
-				Files.copy(toCopy.get(i).toPath(), new File(s).toPath(), StandardCopyOption.REPLACE_EXISTING);
-			} catch (IOException e) {
-				System.err.println("Copy Error " + e.getStackTrace());
-			}
 
+		ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+		for (int i = 0; i < files.size(); i++) {
+			final int index = i;
+			executor.submit(() -> {
+				String s = to.getPath() + File.separator + files.get(index).getParentFile().getName() + "."
+						+ files.get(index).getName();
+				try {
+					Files.copy(files.get(index).toPath(), new File(s).toPath(), StandardCopyOption.REPLACE_EXISTING);
+				} catch (IOException e) {
+					System.err.println("Copy Error " + e.getStackTrace());
+				}
+				synchronized (bar) {
+					int pro = (int) ((double) index / files.size() * 100);
+					mainFrame.setTitle(pro + "%");
+					bar.setValue(pro);
+				}
+			});
 		}
+
+		executor.shutdown();
+		try {
+			if (!executor.awaitTermination(60, TimeUnit.MINUTES)) {
+				executor.shutdownNow();
+			}
+		} catch (InterruptedException e) {
+			executor.shutdownNow();
+		}
+
 		mainFrame.dispatchEvent(new WindowEvent(mainFrame, WindowEvent.WINDOW_CLOSING));
 	}
 }
